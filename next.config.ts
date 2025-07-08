@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const nextConfig: NextConfig = {
-  /* config options here */
   reactStrictMode: true,
   eslint: {
-    ignoreDuringBuilds: true, // ✅ ปิด eslint ตอน build
+    ignoreDuringBuilds: true,
   },
-  output: 'export', // ✅ เพิ่มตรงนี้เพื่อใช้ static export
+  ...(isProd && {
+    output: 'export',
+  }),
 };
 
 export default nextConfig;
