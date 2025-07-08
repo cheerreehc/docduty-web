@@ -1,13 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactStrictMode: true,
   eslint: {
-    ignoreDuringBuilds: true, // ✅ ปิด eslint ตอน build
+    ignoreDuringBuilds: true,
   },
-  output: 'export', // ✅ เพิ่มตรงนี้เพื่อใช้ static export
+  output: 'export',
   trailingSlash: true,
+  images: {
+    unoptimized: true, // ✅ เพิ่มบรรทัดนี้
+  },
 };
 
 export default nextConfig;
