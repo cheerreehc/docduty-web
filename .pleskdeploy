@@ -1,17 +1,20 @@
 #!/bin/bash
 
-echo "🔧 Deploying to docduty.app ..."
+echo "🔧 Starting deploy in docduty.app folder..."
 
-# 1. ติดตั้ง dependency
-npm install
+# 1. ติดตั้ง dependency (ถ้ายังไม่มี node_modules)
+[ -d node_modules ] || npm install
 
-# 2. Build Static Export
+# 2. Build static export
 npm run build
 
-# 3. ลบของเก่าในโฟลเดอร์เว็บ
-rm -rf ../docduty.app/*
+# 3. ลบไฟล์/โฟลเดอร์เก่ายกเว้น .well-known และ node_modules
+find . -mindepth 1 -maxdepth 1 ! -name 'out' ! -name '.well-known' ! -name 'node_modules' ! -name '.git' ! -name '.pleskdeploy' -exec rm -rf {} +
 
-# 4. คัดลอกของใหม่จาก out/
-cp -r out/* ../docduty.app/
+# 4. คัดลอกไฟล์จาก out/* มาแทนที่ root
+cp -r out/* .
 
-echo "✅ Deployment to docduty.app completed!"
+# 5. ลบโฟลเดอร์ out
+rm -rf out
+
+echo "✅ Deploy completed successfully!"
