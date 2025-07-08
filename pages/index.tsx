@@ -1,32 +1,41 @@
 // pages/index.tsx
 import Link from 'next/link'
+import Image from 'next/image';
+import FooterMessage from '@/components/FooterMessage'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-animated flex items-center justify-center px-4">
       <div className="max-w-2xl w-full text-center space-y-8 py-12">
-        <h1 className="text-4xl font-bold text-gray-800">👨‍⚕️ DocDuty</h1>
-        <p className="text-lg text-gray-600">
-          ระบบจัดตารางเวรสำหรับทีมแพทย์ ใช้งานง่ายบนเว็บและมือถือ
-        </p>
-
+        <div className="flex flex-col items-center space-y-2 mb-8">
+                <Image
+                  src="/logo.png"
+                  alt="DocDuty Logo"
+                  width={200}
+                  height={200}
+                  priority
+                />
+              </div>
+          <h1 className="font-round text-3xl "> ระบบจัดตารางเวรสำหรับทีมแพทย์ ใช้งานง่ายบนเว็บและมือถือ</h1>
+          
         <div className="space-x-4">
-          <Link href="/register">
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
+          <Link href="/signup">
+            <button className="font-round text-xl bg-[#008191] text-white px-6 py-2 rounded-md hover:bg-[#015A66] transition">
               สมัครใช้งานฟรี
             </button>
           </Link>
 
           <Link href="/signin">
-            <button className="border border-blue-600 text-blue-600 px-6 py-2 rounded-md hover:bg-blue-100 transition">
+            <button className="border text-xl border-[#008191] text-[#008191] px-6 py-2 rounded-md hover:bg-white transition">
               เข้าสู่ระบบ
             </button>
           </Link>
         </div>
 
-        <p className="text-sm text-gray-400 pt-8">
-          DocDuty © {new Date().getFullYear()} – จัดเวรง่ายในคลิกเดียว
-        </p>
+        <div className="text-xl text-gray-400 pt-8 text-center">
+          <p>DocDuty © {new Date().getFullYear()}</p>
+          <FooterMessage />
+        </div>
       </div>
     </div>
   )
