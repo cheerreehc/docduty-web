@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
 import WorkspaceName from '@/components/WorkSpaceName';
+import Header from "@/components/Header";
 
 
 const MySwal = withReactContent(Swal)
@@ -255,7 +256,9 @@ export default function MembersPage() {
   //end of update workspace name 
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <>
+    <Header />
+    <div className="pt-32 p-6 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold font-round mb-2">จัดการสมาชิก</h1>
        {/* WORKSPACE NAME LOGIC */}
        <WorkspaceName
@@ -364,6 +367,6 @@ export default function MembersPage() {
         </tbody>
       </table>
     </div>
-
+  </>
   );
 }
