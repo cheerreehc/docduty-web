@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true, // ✅ ปิด eslint ตอน build
   },
   output: 'export', // ✅ เพิ่มตรงนี้เพื่อใช้ static export
+  trailingSlash: true,
 };
 
 export default nextConfig;
