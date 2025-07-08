@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   ...(isProd && {
     output: 'export',
   }),
+  images: {
+    domains: ['pqnmfikncumnshlbgsmz.supabase.co'], // ✅ ใส่โดเมนของ supabase ที่ใช้ storage
+  },
 };
 
 export default nextConfig;

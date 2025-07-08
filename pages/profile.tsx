@@ -5,77 +5,46 @@ import Image from "next/image";
 import Header from "@/components/Header";
 import { createSupabaseClient } from '@/lib/supabase';
 import AvatarUpload from "@/components/AvatarUpload";
+import { useUser } from "@/contexts/UserContext";
 
 const supabase = createSupabaseClient(true);
 
 export default function DoctorProfile() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  // const [loading, setLoading] = useState(true);
+  // const [profile, setProfile] = useState<any>(null);
+  const { profile, setProfile, fetchProfile, loading } = useUser();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<any>(null);
 
-
   useEffect(() => {
-    const fetchProfile = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        // console.error("❌ getUser failed:", userError);
-        router.push("/login"); // หรือ redirect หน้าอื่น
-        return;
-      }
-
-    if (!user.email) {
-        console.error("⚠️ Email is missing in user object", user);
-        return; 
+    if (!loading && profile === null) {
+      router.push("/login");
+    } else if (profile) {
+      setDraft({ ...profile }); // ✅ ไม่ต้อง setLoading(false) ที่นี่
     }
-    // console.log("🧪 user", user);
-    // console.log("📧 user.email", user.email);
-
-    const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-    if (error) {
-    console.error("โหลดโปรไฟล์ล้มเหลว", error);
-    return;
-    }
-    
-    setProfile({
-    ...data,
-    email: user.email,
-    });
-    setDraft(data);
-    setLoading(false);
-    };
-
-    fetchProfile();
-  }, []);
+  }, [profile, loading]);
 
 // SAVE FUNCTION
   const handleSave = async () => {
     const draftToUpdate = { ...draft };
-    delete draftToUpdate.email; // ✅ ลบ field ที่ไม่อยู่ใน table
+    delete draftToUpdate.email;
 
     const { error } = await supabase
-        .from("profiles")
-        .update(draftToUpdate)
-        .eq("id", draft.id);
+      .from("profiles")
+      .update(draftToUpdate)
+      .eq("id", draft.id);
 
     if (error) {
-        alert("บันทึกล้มเหลว: " + error.message);
-        return;
+      alert("บันทึกล้มเหลว: " + error.message);
+      return;
     }
 
-    setProfile(draft);
+    // ✅ โหลดข้อมูลล่าสุดจาก DB เพื่อให้ sync ทุกหน้า
+    await fetchProfile();
+
     setEditing(false);
-    };
+  };
 // END OF SAVE FUNCTION
 
   if (loading || !profile) return <div className="p-10">กำลังโหลด...</div>;
@@ -88,23 +57,26 @@ export default function DoctorProfile() {
           {/* Header */}
           <div className="flex items-center gap-4">
             <AvatarUpload
-  uid={profile.id}
-  url={profile.avatar_url}
-  onUpload={async (url) => {
-    // ✅ อัปเดตทั้ง draft, profile (UI จะเปลี่ยนทันที), และ DB
-setDraft({ ...draft, avatar_url: url });
-setProfile({ ...profile, avatar_url: url });
+              uid={profile.id}
+              url={profile.avatar_url}
+              onUpload={async (url) => {
+                setDraft({ ...draft, avatar_url: url });
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ avatar_url: url })
-      .eq("id", profile.id);
+                const { error } = await supabase
+                  .from("profiles")
+                  .update({ avatar_url: url })
+                  .eq("id", profile.id);
 
-    if (error) {
-      alert("อัปเดตรูปไม่สำเร็จ: " + error.message);
-    }
-  }}
-/>
+                if (error) {
+                  alert("อัปเดตรูปไม่สำเร็จ: " + error.message);
+                  return;
+                }
+
+                // ✅ ให้ fetchProfile ใหม่เพื่อ sync ทุกหน้า (เช่น Header)
+                await fetchProfile();
+              }}
+
+            />
 
             <div>
               <h2 className="text-xl font-semibold text-[#00677F]">
@@ -150,21 +122,21 @@ setProfile({ ...profile, avatar_url: url });
                 <FormItem
                   label="คำนำหน้า"
                   value={draft.title}
-                  onChange={(v) => setDraft({ ...draft, prefix: v })}
+                  onChange={(v) => setDraft({ ...draft, title: v })}
                 />
               </div>
               <div className="sm:col-span-4">
                 <FormItem
                   label="ชื่อ"
                   value={draft.first_name}
-                  onChange={(v) => setDraft({ ...draft, firstName: v })}
+                  onChange={(v) => setDraft({ ...draft, first_name: v })}
                 />
               </div>
               <div className="sm:col-span-5">
                 <FormItem
                   label="นามสกุล"
                   value={draft.last_name}
-                  onChange={(v) => setDraft({ ...draft, lastName: v })}
+                  onChange={(v) => setDraft({ ...draft, last_name: v })}
                 />
               </div>
             </div>
@@ -178,7 +150,7 @@ setProfile({ ...profile, avatar_url: url });
               <FormItem
                 label="ชั้นปี เช่น Extern, Intern, R1, Staff เป็นต้น"
                 value={draft.year_level}
-                onChange={(v) => setDraft({ ...draft, year: v })}
+                onChange={(v) => setDraft({ ...draft, year_level: v })}
               />
             </div>
 

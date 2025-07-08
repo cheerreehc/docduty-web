@@ -15,10 +15,6 @@ import Head from 'next/head'
 import Header from "@/components/Header";
 
 export default function CalendarPage() {
-   
-  <Head>
-    <title>ตารางเวร | DocDuty</title>
-  </Head>
   
   const [currentDate, setCurrentDate] = useState(new Date())
 
@@ -64,7 +60,7 @@ export default function CalendarPage() {
   return (
     <>
       <Head>
-        <title>ปฏิทิน Modern</title>
+        <title>ตารางเวร | DocDuty</title>
       </Head>
       <div className="pt-28 px-4 w-full max-w-4xl mx-auto">
         <Header />
