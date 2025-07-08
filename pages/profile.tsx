@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import Header from "@/components/Header";
-import { createSupabaseClient } from '@/lib/supabase'; // <-- แก้ตรงนี้ตาม path ของคุณ
+import { createSupabaseClient } from '@/lib/supabase';
+import AvatarUpload from "@/components/AvatarUpload";
 
 const supabase = createSupabaseClient(true);
 
@@ -86,13 +87,25 @@ export default function DoctorProfile() {
         <div className="max-w-xl mx-auto bg-white shadow-xl rounded-xl p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <Image
-              src="/doctor-avatar.jpg"
-              alt="Doctor Avatar"
-              width={96}
-              height={96}
-              className="w-24 h-24 rounded-full object-cover border-2 border-[#00677F]"
-            />
+            <AvatarUpload
+  uid={profile.id}
+  url={profile.avatar_url}
+  onUpload={async (url) => {
+    // ✅ อัปเดตทั้ง draft, profile (UI จะเปลี่ยนทันที), และ DB
+setDraft({ ...draft, avatar_url: url });
+setProfile({ ...profile, avatar_url: url });
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: url })
+      .eq("id", profile.id);
+
+    if (error) {
+      alert("อัปเดตรูปไม่สำเร็จ: " + error.message);
+    }
+  }}
+/>
+
             <div>
               <h2 className="text-xl font-semibold text-[#00677F]">
                 {profile.title} {profile.first_name} {profile.last_name}
