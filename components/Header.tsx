@@ -36,7 +36,7 @@ export default function Header() {
       <div className="w-full max-w-6xl bg-white/90 backdrop-blur-md shadow-lg rounded-full px-6 py-3 flex items-center justify-between border border-gray-200">
         {/* Left: Logo + Greeting */}
         <div className="flex items-center space-x-3">
-          <Link href="/">
+          <Link href="/dashboard">
             <Image
               src="/logo-docduty.png"
               alt="DocDuty Logo"
@@ -94,6 +94,15 @@ export default function Header() {
                   <Link href="/stats" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#E8FAFF]">
                     📊 สถิติเวร
                   </Link>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut()
+                      window.location.href = "/" // ✅ redirect หลัง logout
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    🚪 ออกจากระบบ
+                  </button>
                 </div>
               )}
           </div>

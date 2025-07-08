@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { signIn } from '@/lib/auth/signin';
+import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default function SignInForm() {
   const router = useRouter();
+  const { fetchProfile } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -18,6 +20,7 @@ export default function SignInForm() {
 
     try {
       await signIn(email, password,rememberMe);
+      await fetchProfile()
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
