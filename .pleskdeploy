@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "🔧 Deploying to docduty.app ..."
+
+# 1. ติดตั้ง dependency
+npm install
+
+# 2. Build Static Export
+npm run build
+
+# 3. ลบของเก่าในโฟลเดอร์เว็บ
+rm -rf ../docduty.app/*
+
+# 4. คัดลอกของใหม่จาก out/
+cp -r out/* ../docduty.app/
+
+echo "✅ Deployment to docduty.app completed!"
