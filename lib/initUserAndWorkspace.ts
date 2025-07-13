@@ -1,8 +1,8 @@
 // lib/initUserAndWorkspace.ts
-import { createSupabaseClient } from './supabase';
+import { createClient } from '@/utils/supabase/client'
 
 export async function initUserAndWorkspace() {
-  const supabase = createSupabaseClient(true);
+  const supabase = createClient();
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   const user = userData?.user;

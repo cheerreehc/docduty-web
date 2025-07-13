@@ -1,9 +1,9 @@
 // lib/inviteMember.ts
-import { createSupabaseClient } from './supabase';
+import { createClient } from '@/utils/supabase/client'
 import { toast } from 'react-toastify';
 
 export async function inviteMember(email: string, workspaceId: string, role = 'viewer') {
-  const supabase = createSupabaseClient(true);
+  const supabase = createClient();
 
   // ดึง user ปัจจุบัน
   const { data: userData } = await supabase.auth.getUser();

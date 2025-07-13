@@ -1,18 +1,19 @@
 // components/AvatarUpload.tsx
 import { useState } from "react";
-import { createSupabaseClient } from "@/lib/supabase";
-
-const supabase = createSupabaseClient(true);
+import { createClient } from '@/utils/supabase/client'
 
 export default function AvatarUpload({
-  uid,
-  url,
-  onUpload,
-}: {
-  uid: string;
-  url: string | null;
-  onUpload: (path: string) => void;
-}) {
+    uid,
+    url,
+    onUpload,
+  }: {
+    uid: string;
+    url: string | null;
+    onUpload: (path: string) => void;
+  }) {
+
+  const supabase = createClient();
+
   const [uploading, setUploading] = useState(false);
 
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {

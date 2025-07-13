@@ -1,53 +1,46 @@
 // pages/profile.tsx
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import Image from "next/image";
-import Header from "@/components/Header";
-import { createSupabaseClient } from '@/lib/supabase';
-import AvatarUpload from "@/components/AvatarUpload";
-import { useUser } from "@/contexts/UserContext";
-
-const supabase = createSupabaseClient(true);
+import { useEffect, useState } from 'react'
+import Header from '@/components/Header'
+import AvatarUpload from '@/components/AvatarUpload'
+import { useUser } from '@/contexts/UserContext'
+import { createClient } from '@/utils/supabase/client'
+import { createServerSupabaseClient } from '@/utils/supabase/server'
+import type { GetServerSideProps } from 'next'
 
 export default function DoctorProfile() {
-  const router = useRouter();
-  // const [loading, setLoading] = useState(true);
-  // const [profile, setProfile] = useState<any>(null);
-  const { profile, setProfile, fetchProfile, loading } = useUser();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<any>(null);
+  const { profile, setProfile, fetchProfile, loading } = useUser()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<any>(null)
 
   useEffect(() => {
-    if (!loading && profile === null) {
-      router.push("/login");
-    } else if (profile) {
-      setDraft({ ...profile }); // ✅ ไม่ต้อง setLoading(false) ที่นี่
+    if (profile) {
+      setDraft({ ...profile })
     }
-  }, [profile, loading]);
+  }, [profile])
 
-// SAVE FUNCTION
+  const supabase = createClient()
+
   const handleSave = async () => {
-    const draftToUpdate = { ...draft };
-    delete draftToUpdate.email;
+    const draftToUpdate = { ...draft }
+    delete draftToUpdate.email
 
     const { error } = await supabase
-      .from("profiles")
+      .from('profiles')
       .update(draftToUpdate)
-      .eq("id", draft.id);
+      .eq('id', draft.id)
 
     if (error) {
-      alert("บันทึกล้มเหลว: " + error.message);
-      return;
+      alert('บันทึกล้มเหลว: ' + error.message)
+      return
     }
 
-    // ✅ โหลดข้อมูลล่าสุดจาก DB เพื่อให้ sync ทุกหน้า
-    await fetchProfile();
+    await fetchProfile()
+    setEditing(false)
+  }
 
-    setEditing(false);
-  };
-// END OF SAVE FUNCTION
-
-  if (loading || !profile) return <div className="p-10">กำลังโหลด...</div>;
+  if (loading || !profile || !draft) {
+    return <div className="p-10">กำลังโหลด...</div>
+  }
 
   return (
     <>
@@ -58,26 +51,22 @@ export default function DoctorProfile() {
           <div className="flex items-center gap-4">
             <AvatarUpload
               uid={profile.id}
-              url={profile.avatar_url}
+              url={profile.avatar_url ?? ''}
               onUpload={async (url) => {
-                setDraft({ ...draft, avatar_url: url });
-
+                setDraft({ ...draft, avatar_url: url })
                 const { error } = await supabase
-                  .from("profiles")
+                  .from('profiles')
                   .update({ avatar_url: url })
-                  .eq("id", profile.id);
+                  .eq('id', profile.id)
 
                 if (error) {
-                  alert("อัปเดตรูปไม่สำเร็จ: " + error.message);
-                  return;
+                  alert('อัปเดตรูปไม่สำเร็จ: ' + error.message)
+                  return
                 }
 
-                // ✅ ให้ fetchProfile ใหม่เพื่อ sync ทุกหน้า (เช่น Header)
-                await fetchProfile();
+                await fetchProfile()
               }}
-
             />
-
             <div>
               <h2 className="text-xl font-semibold text-[#00677F]">
                 {profile.title} {profile.first_name} {profile.last_name}
@@ -88,19 +77,15 @@ export default function DoctorProfile() {
 
           {/* ข้อมูลส่วนตัว */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <ProfileItem label="ชื่อเล่น" value={profile.nickname} />
-            <ProfileItem label="อีเมล" value={profile.email} />
-            <ProfileItem label="เบอร์โทร" value={profile.phone} />
-            <ProfileItem label="ชั้นปี" value={profile.year_level} />
+            <ProfileItem label="ชื่อเล่น" value={profile.nickname ?? ''} />
+            <ProfileItem label="อีเมล" value={profile.email ?? ''} />
+            <ProfileItem label="เบอร์โทร" value={profile.phone ?? ''} />
+            <ProfileItem label="ชั้นปี" value={profile.year_level ?? ''} />
           </div>
 
-          {/* ปุ่มแก้ไขโปรไฟล์ */}
           <div className="text-left">
             <button
-              onClick={() => {
-                setDraft(profile);
-                setEditing(true);
-              }}
+              onClick={() => setEditing(true)}
               className="px-4 py-2 bg-[#E0F6FA] text-[#00677F] hover:bg-[#d0f0f5] rounded-lg text-sm font-medium shadow"
             >
               แก้ไขโปรไฟล์
@@ -113,9 +98,7 @@ export default function DoctorProfile() {
       {editing && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl p-6 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4">
-            <h3 className="text-lg font-semibold text-[#00677F]">
-              แก้ไขโปรไฟล์
-            </h3>
+            <h3 className="text-lg font-semibold text-[#00677F]">แก้ไขโปรไฟล์</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
               <div className="sm:col-span-3">
@@ -181,7 +164,7 @@ export default function DoctorProfile() {
         </div>
       )}
     </>
-  );
+  )
 }
 
 function FormItem({
@@ -190,10 +173,10 @@ function FormItem({
   onChange,
   disabled = false,
 }: {
-  label: string;
-  value: string;
-  onChange?: (val: string) => void;
-  disabled?: boolean;
+  label: string
+  value: string
+  onChange?: (val: string) => void
+  disabled?: boolean
 }) {
   return (
     <div className="flex flex-col">
@@ -204,11 +187,11 @@ function FormItem({
         disabled={disabled}
         onChange={(e) => onChange?.(e.target.value)}
         className={`rounded-lg px-3 py-2 text-m text-gray-700 border border-gray-300 ${
-          disabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white"
+          disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
         }`}
       />
     </div>
-  );
+  )
 }
 
 function ProfileItem({ label, value }: { label: string; value: string }) {
@@ -217,5 +200,27 @@ function ProfileItem({ label, value }: { label: string; value: string }) {
       <span className="text-m text-gray-500 mb-1">{label}</span>
       <span className="text-base font-medium text-gray-800">{value}</span>
     </div>
-  );
+  )
+}
+
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const supabase = createServerSupabaseClient(ctx)
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      redirect: {
+        destination: '/signin?redirectedFrom=/profile',
+        permanent: false,
+      },
+    }
+  }
+
+  return {
+    props: {},
+  }
 }

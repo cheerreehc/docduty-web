@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client'
 import { initUserAndWorkspace } from '@/lib/initUserAndWorkspace';
 import { toast } from 'sonner'
 import Swal from 'sweetalert2'
@@ -15,7 +15,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [email, setEmail] = useState('');
   const normalizedEmail = email.trim().toLowerCase();
-  const supabase = createSupabaseClient(true);
+  const supabase = createClient();
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [myRole, setMyRole] = useState<string | null>(null);
