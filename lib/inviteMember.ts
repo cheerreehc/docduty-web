@@ -1,51 +1,47 @@
 // lib/inviteMember.ts
-import { createClient } from '@/utils/supabase/client'
-import { toast } from 'react-toastify';
 
-export async function inviteMember(email: string, workspaceId: string, role = 'viewer') {
-  const supabase = createClient();
+import { SupabaseClient } from '@supabase/supabase-js'
 
-  // ดึง user ปัจจุบัน
-  const { data: userData } = await supabase.auth.getUser();
-  const currentUser = userData?.user;
-  if (!currentUser) {
-    toast.error('ยังไม่ได้เข้าสู่ระบบ');
-    return;
-  }
-
-  // ห้ามเชิญตัวเอง
-  if (email.toLowerCase() === currentUser.email?.toLowerCase()) {
-    toast.error('ไม่สามารถเชิญตัวเองได้');
-    return;
-  }
-
-  // ตรวจว่ามีการเชิญไปแล้วหรือยัง
-  const { data: existing } = await supabase
+export async function inviteMember(
+  supabase: SupabaseClient,
+  email: string,
+  workspaceId: string
+): Promise<{ error: any | null }> {
+  // 1. เช็คว่ามีอยู่แล้วไหม (แม้ถูกลบไปก่อนหน้า)
+  const { data: existing, error: findError } = await supabase
     .from('members')
-    .select('id')
-    .eq('workspace_id', workspaceId)
+    .select('*')
     .eq('email', email)
-    .maybeSingle();
+    .eq('workspace_id', workspaceId)
+    .maybeSingle()
+
+  if (findError) {
+    return { error: findError }
+  }
 
   if (existing) {
-    toast.warning('อีเมลนี้ถูกเชิญแล้ว');
-    return;
+    // 2. เคยมี → restore + reset
+    const { error: updateError } = await supabase
+      .from('members')
+      .update({
+        removed_at: null,
+        status: 'invited',
+        user_id: null,
+        profile_user_id: null,
+      })
+      .eq('id', existing.id)
+
+    return { error: updateError }
   }
 
-  // บันทึกคำเชิญ
-  const { error } = await supabase.from('members').insert({
-    email,
-    workspace_id: workspaceId,
-    role,
-    status: 'invited',
-    user_id: null, // ยังไม่รู้ user_id
-  });
+  // 3. ไม่เคย → insert ใหม่
+  const { error: insertError } = await supabase.from('members').insert([
+    {
+      email,
+      workspace_id: workspaceId,
+      status: 'invited',
+    },
+  ])
 
-  if (error) {
-    toast.error('เกิดข้อผิดพลาดในการเชิญ');
-    console.error(error);
-    return;
-  }
-
-  toast.success(`เชิญไปยัง ${email} เรียบร้อยแล้ว`);
+  return { error: insertError }
 }

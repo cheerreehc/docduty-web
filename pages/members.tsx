@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client'
-import { initUserAndWorkspace } from '@/lib/initUserAndWorkspace';
 import { toast } from 'sonner'
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
@@ -21,7 +20,6 @@ export default function MembersPage() {
   const [myRole, setMyRole] = useState<string | null>(null);
 
   useEffect(() => {
-    initUserAndWorkspace(); // 👈 เรียกเช็ก/สร้าง workspace ก่อน
 
     supabase.auth.getUser().then(({ data }) => {
       setMyUserId(data.user?.id || null);
@@ -34,112 +32,111 @@ export default function MembersPage() {
 
   // LOAD FUCTION
   const load = async () => {
-    const me = members.find((m) => m.user_id === myUserId);
-    setMyRole(me?.role || null);
+    setLoading(true)
 
-    setLoading(true);
+    const { data: user } = await supabase.auth.getUser()
+    if (!user?.user?.id) return
 
-    // loading member in workspace
-    const { data: user } = await supabase.auth.getUser();
     const { data: myMember } = await supabase
       .from('members')
       .select('*, workspaces(name)')
-      .eq('user_id', user?.user?.id)
-      .single();
+      .eq('user_id', user.user.id)
+      .maybeSingle()
 
-    if (!myMember) return;
-    if (!user?.user?.id) return;
+    if (!myMember) return
 
-    setWorkspace(myMember.workspaces?.name || 'ไม่พบ');
+    setWorkspace(myMember.workspaces?.name || 'ไม่พบ')
 
     const { data: memberList } = await supabase
       .from('members')
       .select('*')
       .eq('workspace_id', myMember.workspace_id)
-      .eq('status', 'active')
-      .order('created_at', { ascending: true });
-      console.log('All members:', memberList);
-      console.log('workspace_id:', myMember.workspace_id);
-    setMembers(memberList || []);
-    // [members, myUserId]
-    setLoading(false);
-  }; 
+      .is('removed_at', null) // ✅ กรองคนที่ถูกลบ
+      .order('created_at', { ascending: true })
+
+    setMembers(memberList || [])
+
+    const me = (memberList || []).find((m) => m.user_id === user.user.id)
+    setMyRole(me?.role || null)
+
+    setLoading(false)
+  }
+
   //end of load()
 
   //INVITE MEMBER FUNCTION
   const invite = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    const myId = user?.user?.id;
+    const { data: user } = await supabase.auth.getUser()
+    const myId = user?.user?.id
     console.log('🔐 myID : ', myId)
-    if (!myId) return;
+    if (!myId) return
 
     const { data: myMember } = await supabase
       .from('members')
       .select('*')
       .eq('user_id', myId)
-      .single();
+      .single()
 
     console.log('🔐 myMember : ', myMember)
-    if (!myMember) return;
+    if (!myMember) return
 
-    // 1. เช็กว่ามี email นี้อยู่ใน workspace เดียวกันหรือไม่ (active)
+    // ✅ 1. หา member ทุกสถานะ
     const { data: existing } = await supabase
       .from('members')
       .select('*')
       .eq('email', normalizedEmail)
       .eq('workspace_id', myMember.workspace_id)
-      .eq('status', 'active')
-      .maybeSingle();
+      .maybeSingle()
 
     if (existing) {
-      toast.error('อีเมลนี้เป็นสมาชิกอยู่แล้ว');
-      return;
+      if (existing.removed_at) {
+        // ✅ restore
+        const { error: restoreError } = await supabase
+          .from('members')
+          .update({
+            status: 'active',
+            removed_at: null,
+            role: 'viewer',
+            user_id: null,
+            profile_user_id: null,
+          })
+          .eq('id', existing.id)
+
+        if (restoreError) {
+          toast.error('ไม่สามารถ restore สมาชิกได้')
+          return
+        }
+
+        toast.success('เชิญสมาชิกสำเร็จ (restore)')
+      } else {
+        // ❌ ยังอยู่ในระบบ
+        toast.error('อีเมลนี้เป็นสมาชิกอยู่แล้ว')
+        return
+      }
+    } else {
+      // ✅ insert ใหม่
+      const { error: insertError } = await supabase.from('members').insert({
+        email: normalizedEmail,
+        workspace_id: myMember.workspace_id,
+        role: 'viewer',
+        status: 'active',
+      })
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          toast.error('อีเมลนี้เป็นสมาชิกใน workspace นี้อยู่แล้ว')
+        } else {
+          toast.error('เกิดข้อผิดพลาด: ' + insertError.message)
+        }
+        return
+      }
+
+      toast.success('เชิญสมาชิกสำเร็จ')
     }
 
-    // 2. ถ้ามีในสถานะ removed → update เป็น active
-    const { data: removed } = await supabase
-      .from('members')
-      .select('*')
-      .eq('email', email)
-      .eq('workspace_id', myMember.workspace_id)
-      .eq('status', 'removed')
-      .maybeSingle();
-
-    if (removed) {
-      await supabase
-        .from('members')
-        .update({ status: 'active', role: 'viewer' })
-        .eq('id', removed.id);
-    } else {
-      // 3. insert ใหม่
-        const { error: insertError } = await supabase.from('members').insert({
-          email : normalizedEmail,
-          workspace_id: myMember.workspace_id,
-          role: 'viewer',
-          status: 'active',
-        });
-
-        if (insertError) {
-          if (insertError.code === '23505') {
-            toast.error('อีเมลนี้เป็นสมาชิกใน workspace นี้อยู่แล้ว');
-          } else {
-            toast.error('เกิดข้อผิดพลาด: ' + insertError.message);
-          }
-          return; 
-        }
-      }
-    MySwal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: 'ส่งคำเชิญสำเร็จ',
-      showConfirmButton: false,
-      timer: 2000,
-      timerProgressBar: true,
-    })
-    setEmail('');
-    load();
-  };
+    setEmail('')
+    load()
+  }
   //end of invite function
 
   //REMOVE MEMBER FUNCTION
@@ -179,7 +176,12 @@ export default function MembersPage() {
 
     const { error } = await supabase
       .from('members')
-      .update({ status: 'removed', removed_at: new Date().toISOString() })
+      .update({
+          status: 'removed',
+          removed_at: new Date().toISOString(),
+          user_id: null,
+          profile_user_id: null,
+        })
       .eq('id', memberId)
       .eq('workspace_id', myMember.workspace_id)
 
@@ -295,7 +297,6 @@ export default function MembersPage() {
         <thead className="bg-[#f0fafa] text-gray-700 font-medium">
           <tr>
             <th className="p-3">Email</th>
-            <th className="p-3">Year</th>
             <th className="p-3">Role</th>
             <th className="p-3">สถานะ</th>
             <th className="p-3 text-center">ลบ</th>
@@ -305,26 +306,6 @@ export default function MembersPage() {
           {members.map((m) => (
             <tr key={m.id} className="hover:bg-[#f8fafa]">
               <td className="p-3">{m.email || 'ยังไม่ตอบรับ'}</td>
-              {/* ✅ ชั้นปี */}
-              <td className="p-2">
-                {typeof myRole !== 'undefined' ? (
-                  <select
-                    className="text-sm border rounded p-1"
-                    value={m.year_level || ''}
-                    onChange={(e) => updateYearLevel(m.id, e.target.value)}
-                  >
-                    <option value="">—</option>
-                    <option value="Extern">Extern</option>
-                    <option value="Intern">Intern</option>
-                    <option value="R1">R1</option>
-                    <option value="R2">R2</option>
-                    <option value="R3">R3</option>
-                    <option value="Staff">Staff</option>
-                  </select>
-                ) : (
-                  m.year_level || '—'
-                )}
-            </td>
               <td className="p-3 capitalize">{m.role}</td>
               <td className="p-3">
                 <span className={

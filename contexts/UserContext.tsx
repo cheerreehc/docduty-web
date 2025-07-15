@@ -1,114 +1,95 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from 'react'
-import type { SupabaseClient, Session } from '@supabase/supabase-js'
+// contexts/UserContext.tsx
+import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import type { Session, User } from '@supabase/supabase-js'
+import { claimPendingInvitations } from '@/lib/claimInvitation'
 
-
-export type Profile = {
+type Profile = {
   id: string
-  email?: string
-  nickname?: string
-  phone?: string
-  avatar_url?: string
-  year_level?: string
-  title?: string
-  first_name?: string
-  last_name?: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  nickname: string | null
+  avatar_url: string | null
 }
 
 type UserContextType = {
   session: Session | null
   profile: Profile | null
-  setProfile: (profile: Profile | null) => void
-  fetchProfile: () => Promise<void>
   loading: boolean
   isSessionLoading: boolean
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
-export function UserProvider({
-  children,
-  supabase,
-}: {
-  children: ReactNode
-  supabase: SupabaseClient
-}) {
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  const supabase = createClient()
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isSessionLoading, setIsSessionLoading] = useState(true)
 
-  const fetchProfile = async () => {
-    const currentSession = await supabase.auth.getSession()
-    const user = currentSession.data.session?.user
-
-    if (!user) {
-      setProfile(null)
-      setLoading(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (error) {
-      console.warn('⚠️ fetchProfile error:', error)
-      setProfile(null)
-    } else {
-      setProfile({
-        id: user.id,
-        email: user.email,
-        ...data,
-      })
-    }
-
-    setLoading(false)
-  }
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setIsSessionLoading(false)
+    const processUser = async (user: User | null) => {
+      if (user) {
+        // 1. Claim invitations first
+        await claimPendingInvitations(supabase, user)
 
-      if (data.session?.user) {
-        fetchProfile()
+        // 2. Fetch profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        // 👇 ======== ส่วนที่แก้ไขและเพิ่มเติม ======== 👇
+        if (profileData) {
+          // ถ้าเจอโปรไฟล์ ก็ set state ตามปกติ
+          setProfile({ ...profileData, email: user.email || '' })
+        } else {
+          // ถ้าไม่เจอโปรไฟล์ (กรณี user ใหม่) ให้สร้างใหม่
+          console.log('Profile not found for new user, creating one...')
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({ id: user.id, email: user.email }) // เราใส่แค่ id กับ email ที่จำเป็นก่อน
+            .select()
+            .single()
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError)
+            setProfile(null)
+          } else {
+            setProfile(newProfile ? { ...newProfile, email: user.email || '' } : null)
+            console.log('✅ New profile created and set.')
+          }
+        }
+        // 👆 ======== จบส่วนที่แก้ไข ======== 👆
+
       } else {
         setProfile(null)
-        setLoading(false)
       }
-    })
+      setLoading(false)
+    }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setIsSessionLoading(false)
-
-      if (session?.user) {
-        fetchProfile()
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
+      processUser(session?.user ?? null)
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session)
+        setIsSessionLoading(false)
+        processUser(session?.user ?? null)
+      }
+    )
 
     return () => subscription.unsubscribe()
   }, [supabase])
 
-
   return (
-    <UserContext.Provider
-      value={{ session, profile, setProfile, fetchProfile, loading, isSessionLoading }}
-    >
+    <UserContext.Provider value={{ session, profile, loading, isSessionLoading }}>
       {children}
     </UserContext.Provider>
   )
@@ -116,7 +97,7 @@ export function UserProvider({
 
 export const useUser = () => {
   const context = useContext(UserContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useUser must be used within a UserProvider')
   }
   return context

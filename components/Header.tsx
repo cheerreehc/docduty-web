@@ -25,7 +25,6 @@ export default function Header() {
   }, [profile])
 
   useEffect(() => {
-    console.log("✅ Header loading:", loading)
   }, [loading])
 
   useEffect(() => {

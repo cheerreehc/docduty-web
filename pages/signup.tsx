@@ -1,6 +1,6 @@
 // pages/signup.tsx
 import Head from 'next/head'
-import SignUpForm from '@/components/SignUpForm'
+import { SignUpForm } from '@/components/SignUpForm'
 
 export default function SignupPage() {
   return (

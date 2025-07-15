@@ -36,7 +36,6 @@ export default function SignInPage() {
     //   }, 200) // 👈 ป้องกัน redirect ก่อน session ถูกเซ็ต
     // }
    if (!isSessionLoading && !loading && session && profile && !hasRedirected) {
-    console.log('✅ redirecting to /dashboard')
     setHasRedirected(true)
       router.replace('/dashboard')
     }

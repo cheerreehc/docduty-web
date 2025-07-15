@@ -12,45 +12,36 @@ type Props = {
 export default function SignInForm({ redirectedFrom = '/' }: Props) {
   const router = useRouter()
   const supabase = createClient()
-  const { setProfile } = useUser() // 👈 ใช้ setProfile โดยตรง
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (signInError || !data.session?.user) {
-      setError('ไม่พบข้อมูลผู้ใช้ในระบบ')
-      return
+    if (!email || !password) {
+      setError('กรุณากรอกอีเมลและรหัสผ่าน');
+      return;
     }
 
-    const user = data.session.user
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
 
-    // ✅ ดึงโปรไฟล์ทันที
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (!profile || profileError) {
-      setError('ไม่พบข้อมูลผู้ใช้ในระบบ')
-      return
+    if (error || !user) {
+      setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      return;
     }
 
-    // ✅ setProfile context ทันที
-    setProfile({ id: user.id, email: user.email, ...profile })
+    // ✅ ไม่ต้องเรียก setProfile ที่นี่แล้ว
+    // เพราะ UserContext จะอัปเดต profile ให้เองโดยอัตโนมัติ
+    // setProfile({ id: user.id, email: user.email, ...profile }); // <--- ลบบรรทัดนี้ทิ้ง
 
     // 👉 ที่เหลือให้ signin.tsx จัดการ redirect ตามปกติ
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow max-w-sm w-full space-y-5">
