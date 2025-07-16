@@ -80,7 +80,8 @@ export default function CreateWorkspacePage() {
   return (
     <div className="min-h-screen bg-[#F7FCFD]">
       <Header />
-      <div className="pt-32 max-w-xl mx-auto py-10 px-4">
+       <div className="max-w-4xl mx-auto pt-32 px-4 pb-12">
+        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
         <h1 className="text-2xl font-bold mb-4">🚀 สร้าง Workspace ของคุณ</h1>
 
         <label className="block mb-2 text-lg font-medium">ชื่อ Workspace</label>
@@ -102,6 +103,7 @@ export default function CreateWorkspacePage() {
           {loading ? 'กำลังสร้าง...' : 'สร้าง Workspace'}
         </button>
       </div>
+    </div>
     </div>
   )
 }

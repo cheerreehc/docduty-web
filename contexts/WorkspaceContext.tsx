@@ -1,107 +1,177 @@
 // contexts/WorkspaceContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { useUser } from '@/contexts/UserContext'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useUser } from '@/contexts/UserContext';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-// ประเภทข้อมูลของ Workspace และ Role
-type WorkspaceInfo = {
+// --- ประเภทข้อมูล ---
+type Workspace = {
   id: string;
   name: string | null;
-}
+  created_by: string | null;
+};
 
-type MemberInfo = {
-  workspace_id: string;
+// ประเภทข้อมูลสำหรับข้อมูลดิบที่ได้จาก Supabase query
+// workspaces สามารถเป็น null ได้ถ้า join ไม่เจอ
+// removed_at สามารถเป็น null ได้
+interface RawMembershipData {
   role: string | null;
-  workspaces: WorkspaceInfo | null;
+  // ⭐ ปรับให้รองรับทั้ง Workspace object เดี่ยวๆ, null, หรือ Array ของ Workspace object
+  workspaces: Workspace | null | Workspace[]; 
+  removed_at: string | null; 
+  user_id: string; 
+  id: string; 
 }
 
-// ประเภทข้อมูลของ Context
+// ประเภทข้อมูลของ Membership ที่ใช้งานได้จริง (workspaces จะต้องไม่เป็น null และไม่ถูกลบ)
+export type Membership = { 
+  role: string | null;
+  workspaces: Workspace; 
+  user_id: string;
+  id: string;
+};
+
 type WorkspaceContextType = {
-  workspace: WorkspaceInfo | null;
-  myRole: string | null;
+  memberships: Membership[];
+  currentWorkspace: Workspace | null;
+  currentRole: string | null;
+  switchWorkspace: (workspaceId: string) => void;
   loading: boolean;
-}
+};
 
-const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined)
+const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
-  const { session, isSessionLoading } = useUser()
+  const supabase = createClient();
+  const { profile, isSessionLoading } = useUser();
 
-  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null)
-  const [myRole, setMyRole] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // ถ้า session ยังโหลดไม่เสร็จ หรือไม่มี user ก็ไม่ต้องทำอะไร
-    if (isSessionLoading || !session?.user?.id) {
-      if (!isSessionLoading) {
-        setLoading(false); // ถ้าโหลด session เสร็จแล้วแต่ไม่มี user ก็ให้หยุด loading
-        setWorkspace(null);
-        setMyRole(null);
-      }
+  // --- โหลดข้อมูล Workspace ทั้งหมดที่ User เป็นสมาชิก ---
+  const loadMemberships = useCallback(async (supabaseClient: SupabaseClient) => {
+    if (!profile) {
+      setLoading(false);
+      setMemberships([]);
+      setCurrentWorkspace(null);
+      setCurrentRole(null);
+      localStorage.removeItem('activeWorkspaceId'); 
       return;
     }
 
-    const loadUserWorkspace = async (userId: string, supabaseClient: SupabaseClient) => {
-      setLoading(true);
+    setLoading(true);
+    
+    // ⭐ ลบ Generic Type ใน select ออก และ cast ผลลัพธ์ในภายหลัง
+    const { data, error } = await supabaseClient
+      .from('members')
+      .select(`
+        id,
+        role, 
+        user_id,
+        removed_at, 
+        workspaces (id, name, created_by)
+      `)
+      .eq('user_id', profile.id);
 
-      // ดึงข้อมูล membership ของ user คนปัจจุบัน
-      const { data: memberData, error } = await supabaseClient
-        .from('members')
-        .select(`
-          workspace_id,
-          role,
-          workspaces (
-            id,
-            name
-          )
-        `)
-        .eq('user_id', userId)
-        .maybeSingle<MemberInfo>(); // ใช้ maybeSingle เพื่อรองรับกรณีที่ user ยังไม่มี workspace
+    if (error) {
+      console.error("Error fetching memberships:", error);
+      setMemberships([]);
+    } else if (data) {
+      // ⭐ Cast 'data' ให้เป็น RawMembershipData[] อย่างชัดเจนที่นี่
+      const rawMemberships: RawMembershipData[] = data as RawMembershipData[];
 
-      if (error) {
-        console.error('⚠️ Error loading workspace membership:', error);
-        setWorkspace(null);
-        setMyRole(null);
-      } else if (memberData && memberData.workspaces) {
-        // ✅ พบข้อมูล: ตั้งค่า state ให้ถูกต้อง
-        setWorkspace(memberData.workspaces);
-        setMyRole(memberData.role);
-      } else {
-        // ✅ ไม่พบข้อมูล: User login อยู่ แต่ยังไม่ได้เข้าร่วม workspace ใดๆ
-        console.log('✅ User is logged in but not a member of any workspace.');
-        setWorkspace(null);
-        setMyRole(null);
-      }
+      // ⭐ ปรับปรุง logic ใน reduce เพื่อจัดการกับ workspaces ที่เป็น Array
+      const validMemberships = rawMemberships.reduce<Membership[]>((acc, m) => {
+        let workspaceData: Workspace | null = null;
+
+        if (Array.isArray(m.workspaces) && m.workspaces.length > 0) {
+          // ถ้าเป็น Array ให้ใช้ element แรก
+          workspaceData = m.workspaces[0];
+        } else if (m.workspaces && typeof m.workspaces === 'object' && !Array.isArray(m.workspaces)) {
+          // ถ้าเป็น object เดี่ยวๆ และไม่เป็น null
+          workspaceData = m.workspaces;
+        }
+        
+        // เพิ่มเข้า Array ก็ต่อเมื่อมีข้อมูล workspace จริงๆ และยังไม่ถูกลบ
+        if (workspaceData && m.removed_at === null) { 
+          acc.push({ 
+            id: m.id,
+            role: m.role, 
+            workspaces: workspaceData, // TypeScript รู้ว่าตรงนี้ไม่เป็น null แล้ว
+            user_id: m.user_id,
+          });
+        }
+        return acc;
+      }, []);
+
+      setMemberships(validMemberships);
       
-      setLoading(false);
-    };
+      // --- ตรวจสอบและตั้งค่า Workspace ปัจจุบัน ---
+      if (validMemberships.length > 0) {
+        const lastWorkspaceId = localStorage.getItem('activeWorkspaceId');
+        const lastActive = validMemberships.find(m => m.workspaces.id === lastWorkspaceId);
 
-    // เรียกใช้ฟังก์ชันเมื่อ user id พร้อมใช้งาน
-    loadUserWorkspace(session.user.id, supabase);
+        if (lastActive) {
+          setCurrentWorkspace(lastActive.workspaces);
+          setCurrentRole(lastActive.role);
+        } else {
+          const firstWorkspace = validMemberships[0].workspaces;
+          setCurrentWorkspace(firstWorkspace);
+          setCurrentRole(validMemberships[0].role);
+          localStorage.setItem('activeWorkspaceId', firstWorkspace.id);
+        }
+      } else {
+        setCurrentWorkspace(null);
+        setCurrentRole(null);
+        localStorage.removeItem('activeWorkspaceId'); 
+      }
+    }
+    setLoading(false);
+  }, [profile]); 
 
-  }, [session?.user?.id, isSessionLoading, supabase]);
+  useEffect(() => {
+    if (!isSessionLoading) {
+      loadMemberships(supabase);
+    }
+  }, [isSessionLoading, loadMemberships, supabase]);
+
+  // --- ฟังก์ชันสำหรับสลับ Workspace ---
+  const switchWorkspace = useCallback((workspaceId: string) => {
+    const targetMembership = memberships.find(m => m.workspaces.id === workspaceId);
+    if (targetMembership) {
+      setCurrentWorkspace(targetMembership.workspaces);
+      setCurrentRole(targetMembership.role);
+      localStorage.setItem('activeWorkspaceId', workspaceId);
+      console.log(`Switched to workspace: ${targetMembership.workspaces.name}`);
+    } else {
+        console.warn(`Attempted to switch to non-existent or inactive workspace: ${workspaceId}`);
+        setCurrentWorkspace(null); 
+        setCurrentRole(null);
+        localStorage.removeItem('activeWorkspaceId');
+    }
+  }, [memberships]);
 
   return (
     <WorkspaceContext.Provider
       value={{
-        workspace,
-        myRole,
+        memberships,
+        currentWorkspace,
+        currentRole,
+        switchWorkspace,
         loading,
       }}
     >
       {children}
     </WorkspaceContext.Provider>
-  )
+  );
 }
 
-// Custom hook สำหรับเรียกใช้ Context
 export const useWorkspace = () => {
-  const context = useContext(WorkspaceContext)
+  const context = useContext(WorkspaceContext);
   if (context === undefined) {
-    throw new Error('useWorkspace must be used within a WorkspaceProvider')
+    throw new Error('useWorkspace must be used within a WorkspaceProvider');
   }
-  return context
-}
+  return context;
+};
