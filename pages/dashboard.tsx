@@ -49,10 +49,10 @@ export default function DashboardPage() {
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
-  // --- useEffect สำหรับค้นหาคำเชิญ (เมื่อไม่มี Workspace ที่ Active เท่านั้น) ---
+  // --- useEffect สำหรับค้นหาคำเชิญ (จะทำงานเสมอเมื่อ user และ workspace โหลดเสร็จ) ---
   useEffect(() => {
-    // จะทำงานก็ต่อเมื่อ user และ workspace โหลดเสร็จแล้ว และ user ยังไม่มี membership ที่ active
-    if (!userLoading && !workspaceLoading && profile && memberships.length === 0) {
+    // จะทำงานก็ต่อเมื่อ user และ workspace โหลดเสร็จแล้ว
+    if (!userLoading && !workspaceLoading && profile) {
       const checkForInvitation = async () => {
         const { data: inviteData, error: inviteError } = await supabase.rpc('get_pending_invitation');
 
@@ -65,17 +65,17 @@ export default function DashboardPage() {
         if (inviteData && inviteData.length > 0) {
           const fetchedInvitation: Invitation = inviteData[0];
 
-          // ⭐ เพิ่มการตรวจสอบสถานะ removed_at ของสมาชิกที่ถูกเชิญ
+          // เพิ่มการตรวจสอบสถานะ removed_at ของสมาชิกที่ถูกเชิญ
           const { data: memberData, error: memberError } = await supabase
             .from('members')
-            .select('id, removed_at, user_id, email') // เลือกคอลัมน์ที่จำเป็น
+            .select('id, removed_at, user_id, email')
             .eq('id', fetchedInvitation.member_id)
             .eq('workspace_id', fetchedInvitation.workspace_id)
-            .single<MemberStatus>(); // คาดหวังผลลัพธ์เดียว
+            .single<MemberStatus>();
 
           if (memberError) {
             console.error("Error fetching member status for invitation:", memberError);
-            setInvitation(null); // ไม่พบข้อมูลสมาชิกที่ถูกต้อง
+            setInvitation(null);
             return;
           }
 
@@ -87,12 +87,12 @@ export default function DashboardPage() {
             setInvitation(null);
           }
         } else {
-          setInvitation(null); // เคลียร์ค่าเก่าถ้าไม่เจอคำเชิญ
+          setInvitation(null);
         }
       };
       checkForInvitation();
     }
-  }, [userLoading, workspaceLoading, profile, memberships, supabase]);
+  }, [userLoading, workspaceLoading, profile, supabase]);
 
 
   // --- ฟังก์ชันสำหรับจัดการ Event (ปรับปรุงการแจ้งเตือน) ---
@@ -114,8 +114,35 @@ export default function DashboardPage() {
   // --- ส่วนแสดงผลขณะโหลด ---
   if (userLoading || workspaceLoading || !profile) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="p-6">กำลังโหลดข้อมูล...</p>
+      <div className="min-h-screen bg-[#F7FCFD]">
+        <Header />
+        <div className="max-w-4xl mx-auto pt-32 px-4 pb-12">
+          <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+            {/* Skeleton Header */}
+            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-gray-200 pb-6">
+              <div className="space-y-2">
+                <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+              </div>
+              <div className="h-10 bg-gray-200 rounded-lg w-full md:w-40 animate-pulse"></div>
+            </div>
+
+            {/* Skeleton Content */}
+            <div className="mt-6 space-y-4">
+              <div className="h-6 bg-gray-200 rounded w-32 animate-pulse mb-3"></div>
+              {/* Skeleton for Workspace Cards */}
+              {[...Array(3)].map((_, i) => ( // แสดง Skeleton 3 อัน
+                <div key={i} className="w-full flex items-center justify-between p-4 border rounded-lg bg-gray-100 animate-pulse">
+                  <div className="h-5 bg-gray-200 rounded w-48"></div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                    <div className="h-5 bg-gray-200 rounded w-6"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -142,8 +169,8 @@ export default function DashboardPage() {
 
           {/* --- ส่วนแสดงผลหลัก --- */}
           <div className="mt-6 space-y-4">
-            {memberships.length > 0 ? (
-              // Case 1: User มี Workspace แล้ว (เฉพาะที่ Active)
+            {/* Case 1: User มี Workspace แล้ว (เฉพาะที่ Active) - แสดงเสมอถ้ามี */}
+            {memberships.length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-gray-800 mb-3">Workspace ของคุณ</h2>
                 <div className="space-y-3">
@@ -172,8 +199,10 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-            ) : invitation ? (
-              // Case 2: User ไม่มี Workspace ที่ Active แต่มีคำเชิญที่รอดำเนินการ
+            )}
+
+            {/* Case 2: มีคำเชิญที่รอดำเนินการ - แสดงเสมอถ้ามี */}
+            {invitation && (
               <div className="p-4 border border-green-300 bg-green-50 rounded-lg text-green-900">
                 <p className="font-semibold">คุณถูกเชิญให้เข้าร่วม Workspace "{invitation.workspace_name}"</p>
                 <button
@@ -184,8 +213,10 @@ export default function DashboardPage() {
                   {isAccepting ? 'กำลังเข้าร่วม...' : '✅ รับคำเชิญ'}
                 </button>
               </div>
-            ) : (
-              // Case 3: User ไม่มี Workspace ที่ Active และไม่มีคำเชิญที่รอดำเนินการ
+            )}
+
+            {/* Case 3: User ไม่มี Workspace ที่ Active และไม่มีคำเชิญที่รอดำเนินการ - แสดงเมื่อไม่มีทั้งสองอย่าง */}
+            {memberships.length === 0 && !invitation && (
               <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg text-blue-800">
                 <p>⚠️ คุณยังไม่ได้เข้าร่วมหรือสร้าง Workspace ใดๆ เลย</p>
                 <p className="text-sm mt-1">ลองสร้าง Workspace ใหม่เพื่อเริ่มต้นใช้งานได้เลย</p>

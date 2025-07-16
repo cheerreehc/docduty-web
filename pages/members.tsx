@@ -43,7 +43,7 @@ export default function MembersPage() {
         .from('members')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
-        .is('removed_at', null) // ⭐ กลับมาใช้ .is('removed_at', null) เพื่อไม่แสดงสมาชิกที่ถูกลบ
+        .is('removed_at', null) // กลับมาใช้ .is('removed_at', null) เพื่อไม่แสดงสมาชิกที่ถูกลบ
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -64,7 +64,7 @@ export default function MembersPage() {
     setLoading(true);
     const lowerCaseEmail = email.trim().toLowerCase();
 
-    // ⭐ ตรวจสอบว่ามีสมาชิกด้วยอีเมลนี้อยู่แล้วหรือไม่ (รวมถึงที่ถูกลบไปแล้ว)
+    // ตรวจสอบว่ามีสมาชิกด้วยอีเมลนี้อยู่แล้วหรือไม่ (รวมถึงที่ถูกลบไปแล้ว)
     const { data: existingMembers, error: fetchExistingError } = await supabase
       .from('members')
       .select('id, removed_at')
@@ -79,18 +79,18 @@ export default function MembersPage() {
     }
 
     if (existingMembers && existingMembers.length > 0) {
-      // พบสมาชิกเดิม (อาจจะถูกลบไปแล้ว) ทำการอัปเดตให้กลับมา active
+      // พบสมาชิกเดิม (อาจจะถูกลบไปแล้ว) ทำการอัปเดตให้กลับมา pending
       const existingMember = existingMembers[0];
       const { error: updateError } = await supabase
         .from('members')
-        .update({ removed_at: null, status: 'active' }) // ⭐ เคลียร์ removed_at และตั้ง status เป็น active
+        .update({ removed_at: null, status: 'pending' }) // เปลี่ยนเป็น 'pending'
         .eq('id', existingMember.id);
 
       if (updateError) {
         console.error("Error reactivating member:", updateError);
         toast.error('ไม่สามารถเปิดใช้งานสมาชิกเดิมได้: ' + updateError.message);
       } else {
-        toast.success('สมาชิกเดิมถูกเปิดใช้งานแล้ว');
+        toast.success('สมาชิกเดิมถูกเปิดใช้งานแล้ว และสถานะเป็น "รอตอบรับ"');
         setEmail('');
         // โหลดข้อมูลสมาชิกใหม่ทั้งหมด
         const { data: memberList, error: fetchError } = await supabase
@@ -113,7 +113,7 @@ export default function MembersPage() {
         email: lowerCaseEmail,
         workspace_id: currentWorkspace.id,
         role: 'viewer',
-        status: 'pending', // ⭐ กำหนด status เริ่มต้นสำหรับสมาชิกใหม่
+        status: 'pending', // กำหนด status เริ่มต้นสำหรับสมาชิกใหม่
       });
 
       if (insertError) {
@@ -169,7 +169,7 @@ export default function MembersPage() {
           .from('members')
           .update({
             removed_at: new Date().toISOString(),
-            status: 'removed' // ⭐ อัปเดต status เป็น 'removed'
+            status: 'removed' // อัปเดต status เป็น 'removed'
           })
           .eq('id', memberId);
 
@@ -184,7 +184,7 @@ export default function MembersPage() {
             .from('members')
             .select('*')
             .eq('workspace_id', currentWorkspace?.id)
-            .is('removed_at', null) // ⭐ ยังคงกรอง removed_at เพื่อไม่แสดงสมาชิกที่ถูกลบ
+            .is('removed_at', null) // ยังคงกรอง removed_at เพื่อไม่แสดงสมาชิกที่ถูกลบ
             .order('created_at', { ascending: true });
 
           if (fetchError) {
@@ -217,93 +217,102 @@ export default function MembersPage() {
       <Header />
       <div className="max-w-4xl mx-auto pt-32 px-4 pb-12">
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
-        <h1 className="text-3xl font-bold font-round mb-2">จัดการสมาชิก</h1>
-        <p className="text-gray-500 mb-6">Workspace: <strong>{currentWorkspace.name}</strong></p>
-        
-        {currentRole === 'owner' && (
-          <div className="bg-white rounded-lg shadow p-4 mb-6 space-y-4">
-            <label className="font-semibold block">เชิญหมอด้วย Email</label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="doctor@example.com"
-                className="border border-gray-300 rounded-md px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[#008191]"
-              />
-              <button
-                onClick={invite}
-                className="px-4 py-2 rounded-md text-white font-semibold transition bg-[#008191] hover:bg-[#015A66]"
-              >
-                เชิญ
-              </button>
+          <h1 className="text-3xl font-bold font-round mb-2">จัดการสมาชิก</h1>
+          <p className="text-gray-500 mb-6">Workspace: <strong>{currentWorkspace.name}</strong></p>
+          
+          {currentRole === 'owner' && (
+            <div className="bg-white rounded-lg shadow p-4 mb-6 space-y-4">
+              <label className="font-semibold block">เชิญหมอด้วย Email</label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="doctor@example.com"
+                  className="border border-gray-300 rounded-md px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[#008191]"
+                />
+                <button
+                  onClick={invite}
+                  className="px-4 py-2 rounded-md text-white font-semibold transition bg-[#008191] hover:bg-[#015A66]"
+                >
+                  เชิญ
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ตารางสมาชิก */}
-        <div className="w-full text-sm text-left border shadow rounded-md overflow-hidden">
-          <div className="bg-gray-50 border-b">
-            <div className="flex justify-between items-center p-3 font-semibold text-gray-600">
-              <span className="flex-1">Email</span>
-              <span className="w-24 text-center">บทบาท</span>
-              <span className="w-24 text-center">สถานะ</span>
-              {currentRole === 'owner' && <span className="w-20 text-right">จัดการ</span>}
+          {/* ตารางสมาชิก */}
+          <div className="w-full text-sm text-left border shadow rounded-md overflow-hidden">
+            <div className="bg-gray-50 border-b">
+              <div className="flex justify-between items-center p-3 font-semibold text-gray-600">
+                <span className="flex-1">Email</span>
+                <span className="w-24 text-center">บทบาท</span>
+                <span className="w-24 text-center">สถานะ</span>
+                {currentRole === 'owner' && <span className="w-20 text-right">จัดการ</span>}
+              </div>
             </div>
-          </div>
-          <div className="divide-y">
-            {loading ? (
-              <p className="p-4 text-center">กำลังโหลดสมาชิก...</p>
-            ) : members.length > 0 ? (
-              members.map((m) => (
-                <div key={m.id} className="flex justify-between items-center p-3 hover:bg-[#f8fafa]">
-                  <span className="flex-1">{m.email || 'ยังไม่ตอบรับ'}</span>
-                  <span className="w-24 text-center capitalize">{m.role}</span>
-                  <span className="w-24 text-center">
-                    <span className={
-                      `px-3 py-1 rounded-full text-xs font-medium 
-                      ${
-                        // ⭐ ใช้ m.status ในการกำหนดสีและข้อความ
-                        m.status === 'removed'
-                          ? 'bg-red-100 text-red-700'
-                          : m.status === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : m.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-200 text-gray-600'
-                      }`
-                    }>
-                      {
-                        // ⭐ ใช้ m.status ในการกำหนดข้อความ
-                        m.status === 'removed'
-                          ? 'ถูกลบ'
-                          : m.status === 'active'
-                          ? 'สมาชิก'
-                          : m.status === 'pending'
-                          ? 'รอตอบรับ'
-                          : '—'
-                      }
+            <div className="divide-y">
+              {/* ⭐ Skeleton Loading for Members Table */}
+              {loading ? (
+                // แสดง Skeleton 3 แถว
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center p-3 hover:bg-[#f8fafa] animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    {currentRole === 'owner' && <div className="h-4 bg-gray-200 rounded w-12"></div>}
+                  </div>
+                ))
+              ) : members.length > 0 ? (
+                members.map((m) => (
+                  <div key={m.id} className="flex justify-between items-center p-3 hover:bg-[#f8fafa]">
+                    <span className="flex-1">{m.email || 'ยังไม่ตอบรับ'}</span>
+                    <span className="w-24 text-center capitalize">{m.role}</span>
+                    <span className="w-24 text-center">
+                      <span className={
+                        `px-3 py-1 rounded-full text-xs font-medium 
+                        ${
+                          // ใช้ m.status ในการกำหนดสีและข้อความ
+                          m.status === 'removed'
+                            ? 'bg-red-100 text-red-700'
+                            : m.status === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : m.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-200 text-gray-600'
+                        }`
+                      }>
+                        {
+                          // ใช้ m.status ในการกำหนดข้อความ
+                          m.status === 'removed'
+                            ? 'ถูกลบ'
+                            : m.status === 'active'
+                            ? 'สมาชิก'
+                            : m.status === 'pending'
+                            ? 'รอตอบรับ'
+                            : '—'
+                        }
+                      </span>
                     </span>
-                  </span>
-                  {currentRole === 'owner' && (
-                    <span className="w-20 text-right">
-                      <button
-                        onClick={() => removeMember(m.id)}
-                        className={`text-red-600 hover:text-red-800 ${profile?.id === m.user_id || m.status === 'removed' ? 'cursor-not-allowed opacity-50' : ''}`}
-                        disabled={profile?.id === m.user_id || m.status === 'removed'} // ปิดการใช้งานปุ่มถ้าเป็นตัวเอง หรือถูกลบไปแล้ว
-                      >
-                        ลบ
-                      </button>
-                    </span>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="p-4 text-center text-gray-500">ยังไม่มีสมาชิกใน Workspace นี้</p>
-            )}
+                    {currentRole === 'owner' && (
+                      <span className="w-20 text-right">
+                        <button
+                          onClick={() => removeMember(m.id)}
+                          className={`text-red-600 hover:text-red-800 ${profile?.id === m.user_id || m.status === 'removed' ? 'cursor-not-allowed opacity-50' : ''}`}
+                          disabled={profile?.id === m.user_id || m.status === 'removed'} // ปิดการใช้งานปุ่มถ้าเป็นตัวเอง หรือถูกลบไปแล้ว
+                        >
+                          ลบ
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="p-4 text-center text-gray-500">ยังไม่มีสมาชิกใน Workspace นี้</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
