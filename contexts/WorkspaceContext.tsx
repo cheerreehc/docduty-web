@@ -11,24 +11,11 @@ type Workspace = {
   created_by: string | null;
 };
 
-// ประเภทข้อมูลสำหรับข้อมูลดิบที่ได้จาก Supabase query
-// workspaces สามารถเป็น null ได้ถ้า join ไม่เจอ
-// removed_at สามารถเป็น null ได้
-interface RawMembershipData {
+// ✅ แก้ไข Type: นำ profiles ออกจาก Membership
+// Context นี้มีหน้าที่จัดการ "การเป็นสมาชิก" ของ user ปัจจุบัน ไม่ใช่ข้อมูล profile ของสมาชิกทั้งหมด
+type Membership = {
   role: string | null;
-  // ⭐ ปรับให้รองรับทั้ง Workspace object เดี่ยวๆ, null, หรือ Array ของ Workspace object
-  workspaces: Workspace | null | Workspace[]; 
-  removed_at: string | null; 
-  user_id: string; 
-  id: string; 
-}
-
-// ประเภทข้อมูลของ Membership ที่ใช้งานได้จริง (workspaces จะต้องไม่เป็น null และไม่ถูกลบ)
-export type Membership = { 
-  role: string | null;
-  workspaces: Workspace; 
-  user_id: string;
-  id: string;
+  workspaces: Workspace; // Supabase query จะ join ตาราง workspaces เข้ามา
 };
 
 type WorkspaceContextType = {
@@ -43,6 +30,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
+  // ✅ เปลี่ยนไปใช้ isSessionLoading เพื่อรอให้ session พร้อมก่อนเริ่มโหลดข้อมูล
   const { profile, isSessionLoading } = useUser();
 
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -50,65 +38,58 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- โหลดข้อมูล Workspace ทั้งหมดที่ User เป็นสมาชิก ---
   const loadMemberships = useCallback(async (supabaseClient: SupabaseClient) => {
     if (!profile) {
       setLoading(false);
       setMemberships([]);
       setCurrentWorkspace(null);
       setCurrentRole(null);
-      localStorage.removeItem('activeWorkspaceId'); 
       return;
     }
 
     setLoading(true);
-    
-    // ⭐ ลบ Generic Type ใน select ออก และ cast ผลลัพธ์ในภายหลัง
+
     const { data, error } = await supabaseClient
       .from('members')
-      .select(`
-        id,
-        role, 
-        user_id,
-        removed_at, 
-        workspaces (id, name, created_by)
-      `)
-      .eq('user_id', profile.id);
+      .select('role, workspaces!inner(id, name, created_by)')
+      .eq('user_id', profile.id)
+      .is('removed_at', null);
 
     if (error) {
       console.error("Error fetching memberships:", error);
       setMemberships([]);
     } else if (data) {
-      // ⭐ Cast 'data' ให้เป็น RawMembershipData[] อย่างชัดเจนที่นี่
-      const rawMemberships: RawMembershipData[] = data as RawMembershipData[];
 
-      // ⭐ ปรับปรุง logic ใน reduce เพื่อจัดการกับ workspaces ที่เป็น Array
-      const validMemberships = rawMemberships.reduce<Membership[]>((acc, m) => {
-        let workspaceData: Workspace | null = null;
-
-        if (Array.isArray(m.workspaces) && m.workspaces.length > 0) {
-          // ถ้าเป็น Array ให้ใช้ element แรก
-          workspaceData = m.workspaces[0];
-        } else if (m.workspaces && typeof m.workspaces === 'object' && !Array.isArray(m.workspaces)) {
-          // ถ้าเป็น object เดี่ยวๆ และไม่เป็น null
-          workspaceData = m.workspaces;
-        }
+      // ✅ ใช้ .reduce เพื่อสร้าง array ของ membership ที่ถูกต้อง
+      const validMemberships = data.reduce<Membership[]>((accumulator, currentMember) => {
         
-        // เพิ่มเข้า Array ก็ต่อเมื่อมีข้อมูล workspace จริงๆ และยังไม่ถูกลบ
-        if (workspaceData && m.removed_at === null) { 
-          acc.push({ 
-            id: m.id,
-            role: m.role, 
-            workspaces: workspaceData, // TypeScript รู้ว่าตรงนี้ไม่เป็น null แล้ว
-            user_id: m.user_id,
+        let workspaceObject: Workspace | null = null;
+
+        // --- Logic ใหม่ที่ยืดหยุ่น ---
+        // 1. ตรวจสอบกรณีที่ workspaces เป็น Array (เหมือนที่เจอปัญหาตอนแรก)
+        if (Array.isArray(currentMember.workspaces) && currentMember.workspaces.length > 0) {
+          workspaceObject = currentMember.workspaces[0];
+        
+        // 2. ตรวจสอบกรณีที่ workspaces เป็น Object (สถานการณ์ปกติ)
+        } else if (currentMember.workspaces && !Array.isArray(currentMember.workspaces)) {
+          workspaceObject = currentMember.workspaces as Workspace;
+        }
+        // --- จบ Logic ใหม่ ---
+
+        // 3. ถ้าหา workspaceเจอจากเงื่อนไขใดเงื่อนไขหนึ่งข้างบน ให้เพิ่มเข้า Array
+        if (workspaceObject) {
+          accumulator.push({
+            role: currentMember.role,
+            workspaces: workspaceObject
           });
         }
-        return acc;
+        
+        return accumulator;
       }, []);
-
+      
       setMemberships(validMemberships);
       
-      // --- ตรวจสอบและตั้งค่า Workspace ปัจจุบัน ---
+      // Logic การตั้งค่า currentWorkspace ส่วนที่เหลือยังคงเหมือนเดิม
       if (validMemberships.length > 0) {
         const lastWorkspaceId = localStorage.getItem('activeWorkspaceId');
         const lastActive = validMemberships.find(m => m.workspaces.id === lastWorkspaceId);
@@ -117,41 +98,41 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           setCurrentWorkspace(lastActive.workspaces);
           setCurrentRole(lastActive.role);
         } else {
-          const firstWorkspace = validMemberships[0].workspaces;
-          setCurrentWorkspace(firstWorkspace);
-          setCurrentRole(validMemberships[0].role);
-          localStorage.setItem('activeWorkspaceId', firstWorkspace.id);
+          const firstMembership = validMemberships[0];
+          setCurrentWorkspace(firstMembership.workspaces);
+          setCurrentRole(firstMembership.role);
+          localStorage.setItem('activeWorkspaceId', firstMembership.workspaces.id);
         }
       } else {
         setCurrentWorkspace(null);
         setCurrentRole(null);
-        localStorage.removeItem('activeWorkspaceId'); 
+        localStorage.removeItem('activeWorkspaceId');
       }
     }
     setLoading(false);
-  }, [profile]); 
+  }, [profile]);
 
   useEffect(() => {
-    if (!isSessionLoading) {
+    // ✅ รอให้การโหลด session เสร็จสิ้น และมีข้อมูล profile ก่อนที่จะเรียก loadMemberships
+    if (!isSessionLoading && profile) {
       loadMemberships(supabase);
+    } else if (!isSessionLoading && !profile) {
+        // กรณีที่โหลด session เสร็จแล้วแต่ไม่มี user (logout) ให้เคลียร์ค่าทั้งหมด
+        setLoading(false);
+        setMemberships([]);
+        setCurrentWorkspace(null);
+        setCurrentRole(null);
     }
-  }, [isSessionLoading, loadMemberships, supabase]);
+  }, [isSessionLoading, profile, loadMemberships, supabase]);
 
-  // --- ฟังก์ชันสำหรับสลับ Workspace ---
-  const switchWorkspace = useCallback((workspaceId: string) => {
+  const switchWorkspace = (workspaceId: string) => {
     const targetMembership = memberships.find(m => m.workspaces.id === workspaceId);
     if (targetMembership) {
       setCurrentWorkspace(targetMembership.workspaces);
       setCurrentRole(targetMembership.role);
       localStorage.setItem('activeWorkspaceId', workspaceId);
-      console.log(`Switched to workspace: ${targetMembership.workspaces.name}`);
-    } else {
-        console.warn(`Attempted to switch to non-existent or inactive workspace: ${workspaceId}`);
-        setCurrentWorkspace(null); 
-        setCurrentRole(null);
-        localStorage.removeItem('activeWorkspaceId');
     }
-  }, [memberships]);
+  };
 
   return (
     <WorkspaceContext.Provider

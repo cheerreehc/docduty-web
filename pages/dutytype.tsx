@@ -174,7 +174,7 @@ export default function DutyTypePage() {
                     type="text"
                     value={newDutyTypeName}
                     onChange={(e) => setNewDutyTypeName(e.target.value)}
-                    placeholder="ชื่อประเภทเวร เช่น เช้า, บ่าย, ดึก"
+                    placeholder="ชื่อประเภทเวร เช่น ICU , WARD , CCU"
                     className="border border-gray-300 rounded-md px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-[#008191] w-full"
                   />
                   <input

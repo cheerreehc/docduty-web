@@ -5,7 +5,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { claimPendingInvitations } from '@/lib/claimInvitation'
 
 // ⭐ Profile Type Definition ที่ถูกต้องและครบถ้วน (ยืนยันจาก DB Schema)
-type Profile = {
+export type Profile = {
   id: string
   email: string
   first_name: string | null
