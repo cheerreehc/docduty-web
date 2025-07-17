@@ -1,5 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+
 # dependencies
 /node_modules
 /.pnp
@@ -16,6 +17,17 @@
 # next.js
 /.next/
 # /out/
+
+# Environment variables
+# ห้ามนำไฟล์ .env ทั้งหมดขึ้น Git เด็ดขาด!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Production build
+/out
 
 # production
 /build
