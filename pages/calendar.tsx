@@ -351,43 +351,47 @@ export default function CalendarPage() {
                 );
               })}
             </div>
-            <div className="flex justify-between items-center gap-2 pt-3 border-t">
-              {!isReadonly && (
-                <button onClick={handleClearTodaysSchedules} disabled={isSubmitting} className="text-red-600 px-4 py-2 text-sm rounded-md hover:bg-red-50 transition flex items-center gap-1.5 disabled:opacity-50">
-                  <Trash2 size={14}/> ล้างเวรวันนี้
+            <div className="flex flex-wrap justify-between items-center gap-2 pt-3 border-t">
+            {!isReadonly && (
+              <button
+                onClick={handleClearTodaysSchedules}
+                disabled={isSubmitting}
+                className="text-red-600 px-4 py-2 text-sm rounded-md hover:bg-red-50 transition flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Trash2 size={14}/> ล้างเวรวันนี้
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 justify-end">
+              {currentRole !== 'owner' ? (
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="bg-cyan-100 px-4 py-2 text-cyan-600 rounded-md hover:bg-gray-200 transition"
+                >
+                  ปิด
                 </button>
-              )}
-              <div className="w-full flex items-center gap-2 justify-end">
-                {currentRole !== 'owner' ? (
-                  // 🔒 viewer: ปุ่มเดียวคือ "ปิด" อยู่ขวาสุด
+              ) : (
+                <>
                   <button
                     onClick={() => setIsModalOpen(false)}
-                    className="bg-cyan-100 px-4 py-2 text-cyan-600 rounded-md hover:bg-gray-200 transition"
+                    disabled={isSubmitting}
+                    className="text-gray-700 px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition"
                   >
-                    ปิด
+                    ยกเลิก
                   </button>
-                ) : (
-                  // 👑 owner: ปุ่มยกเลิก + บันทึก
-                  <>
-                    <button
-                      onClick={() => setIsModalOpen(false)}
-                      disabled={isSubmitting}
-                      className="text-gray-700 px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition"
-                    >
-                      ยกเลิก
-                    </button>
-                    <button
-                      onClick={handleSaveChanges}
-                      disabled={isSubmitting}
-                      className="bg-[#008191] text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-[#015A66] transition disabled:opacity-50 flex items-center gap-2"
-                    >
-                      <Save size={16} />
-                      {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
-                    </button>
-                  </>
-                )}
-              </div>
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={isSubmitting}
+                    className="bg-[#008191] text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-[#015A66] transition disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Save size={16} />
+                    {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
+                  </button>
+                </>
+              )}
             </div>
+          </div>
+
           </div>
         </div>
       )}
