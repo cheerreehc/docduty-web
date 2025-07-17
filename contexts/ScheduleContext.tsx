@@ -56,7 +56,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       .gte('date', startDate)
       .lte('date', endDateString)
       // เพิ่มการกรอง schedule ที่ยังไม่ถูกลบ (ถ้ามีคอลัมน์ deleted_at ในตาราง schedules)
-      .is('deleted_at', null); 
+      // .is('deleted_at', null); 
 
     if (fetchError) {
       console.error("Error fetching schedules:", fetchError);

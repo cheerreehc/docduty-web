@@ -45,7 +45,7 @@ export default function CalendarPage() {
   const { holidaysMap } = useThaiHolidays(currentYear);
   const filteredMembers = useMemo(() => members.filter(member => getMemberDisplayName(member) !== 'ไม่ระบุ'), [members]);
 
-   console.log("CalendarPage กำลัง re-render, จำนวน schedules:", schedules.length);
+  //  console.log("CalendarPage กำลัง re-render, จำนวน schedules:", schedules.length);
 
   // --- Effects & Memos ---
   useEffect(() => {
@@ -121,7 +121,7 @@ export default function CalendarPage() {
   const handleSaveChanges = async () => {
     if (!selectedDate) return;
     setIsSubmitting(true);
-    const toastId = toast.loading("กำลังบันทึกการเปลี่ยนแปลง...");
+    // const toastId = toast.loading("กำลังบันทึกการเปลี่ยนแปลง...");
 
     const originalSchedules = schedules.filter(s => s.date.startsWith(selectedDate));
     const originalPairs = new Map(originalSchedules.map(s => [s.duty_type_id, { memberId: s.member_id, scheduleId: s.id }]));
@@ -147,7 +147,7 @@ export default function CalendarPage() {
     // เพื่อให้ UI แสดงผลการเปลี่ยนแปลงทันทีโดยไม่ต้องรอ
     await loadSchedules(currentYear, currentMonth + 1);
     
-    toast.dismiss(toastId);
+    // toast.dismiss(toastId);
 
     if (results.some(res => !res)) {
       toast.error("เกิดข้อผิดพลาดบางอย่าง ไม่สามารถบันทึกได้ครบถ้วน");
@@ -164,10 +164,10 @@ export default function CalendarPage() {
     const todaysSchedules = schedules.filter(s => s.date.startsWith(selectedDate));
     if (todaysSchedules.length === 0) return toast.info("ไม่มีเวรให้ลบในวันนี้");
     setIsSubmitting(true);
-    const toastId = toast.loading("กำลังลบเวรของวันนี้...");
+    // const toastId = toast.loading("กำลังลบเวรของวันนี้...");
     await Promise.all(todaysSchedules.map(s => removeSchedule(s.id)));
     await loadSchedules(currentYear, currentMonth + 1);
-    toast.dismiss(toastId);
+    // toast.dismiss(toastId);
     toast.success("ลบเวรทั้งหมดของวันนี้สำเร็จ!");
     setSchedulePairs(new Map());
     setIsSubmitting(false);
@@ -177,10 +177,10 @@ export default function CalendarPage() {
     setIsClearMonthModalOpen(false);
     if (schedules.length === 0) return toast.info("ไม่มีเวรในเดือนนี้ให้ลบ");
     setIsSubmitting(true);
-    const toastId = toast.loading("กำลังลบเวรทั้งหมดของเดือนนี้...");
+    // const toastId = toast.loading("กำลังลบเวรทั้งหมดของเดือนนี้...");
     await Promise.all(schedules.map(s => removeSchedule(s.id)));
     await loadSchedules(currentYear, currentMonth + 1);
-    toast.dismiss(toastId);
+    // toast.dismiss(toastId);
     toast.success("ลบเวรทั้งหมดในเดือนนี้สำเร็จ!");
     setIsSubmitting(false);
   };
