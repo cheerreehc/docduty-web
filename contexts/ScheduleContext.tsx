@@ -5,7 +5,9 @@ import { useUser } from '@/contexts/UserContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 // --- Type Definitions ---
-export type ProfileDataFromSupabase = { id: string; nickname: string | null; first_name: string | null; last_name: string | null; email: string | null; };
+export type ProfileDataFromSupabase = { id: string; nickname: string | null; first_name: string | null; last_name: string | null; email: string | null;  avatar_url?: string | null;
+  phone?: string | null;
+  year_level?: string | null;};
 type MemberForSchedule = { id: string; user_id: string; profiles: ProfileDataFromSupabase | null; };
 type DutyTypeForSchedule = { id: string; name: string; color: string; };
 interface RawScheduleData { id: string; date: string; member_id: string; duty_type_id: string; workspace_id: string; created_at: string; }
