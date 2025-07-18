@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model duty_types {
+  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String
+  workspace_id String?     @db.Uuid
+  created_at   DateTime?   @default(now()) @db.Timestamptz(6)
+  deleted_at   DateTime?   @db.Timestamptz(6)
+  color        String?
+  workspaces   workspaces? @relation(fields: [workspace_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  schedules    schedules[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model members {
+  id              String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id         String?     @db.Uuid
+  workspace_id    String?     @db.Uuid
+  role            String
+  created_at      DateTime?   @default(now()) @db.Timestamp(6)
+  email           String?
+  status          String?     @default("active")
+  removed_at      DateTime?   @db.Timestamptz(6)
+  year_level      String?
+  profile_user_id String?     @db.Uuid
+  profiles        profiles?   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workspaces      workspaces? @relation(fields: [workspace_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  schedules       schedules[]
+
+  @@unique([workspace_id, email], map: "unique_email_workspace")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id         String    @id @default(dbgenerated("auth.uid()")) @db.Uuid
+  title      String?
+  first_name String?
+  last_name  String?
+  bio        String?
+  nickname   String?
+  year_level String?
+  phone      String?
+  avatar_url String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  email      String?
+  members    members[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model schedules {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  date         DateTime   @db.Date
+  member_id    String     @db.Uuid
+  duty_type_id String     @db.Uuid
+  workspace_id String     @db.Uuid
+  created_at   DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?  @default(now()) @db.Timestamptz(6)
+  deleted_at   DateTime?  @db.Timestamptz(6)
+  duty_types   duty_types @relation(fields: [duty_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_duty_type")
+  members      members    @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_member")
+  workspaces   workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_workspace")
+
+  @@index([date], map: "idx_schedules_date")
+  @@index([duty_type_id], map: "idx_schedules_duty_type_id")
+  @@index([member_id], map: "idx_schedules_member_id")
+  @@index([workspace_id], map: "idx_schedules_workspace_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workspaces {
+  id         String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name       String
+  created_at DateTime?    @default(now()) @db.Timestamp(6)
+  created_by String       @default(dbgenerated("auth.uid()")) @db.Uuid
+  duty_types duty_types[]
+  members    members[]
+  schedules  schedules[]
+}
