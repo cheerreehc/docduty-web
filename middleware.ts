@@ -1,35 +1,45 @@
 // middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  // ใช้ชื่อ cookie ที่ถูกต้องของ Supabase v2
-  const accessToken = req.cookies.get('sb-access-token')?.value 
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          req.cookies.set({ name, value, ...options })
+          // The `update` method will be called on the response object in the
+          // `supabase.auth.getUser()` method below.
+        },
+        remove(name: string, options: CookieOptions) {
+          req.cookies.set({ name, value: '', ...options })
+          // The `update` method will be called on the response object in the
+          // `supabase.auth.getUser()` method below.
+        },
+      },
+    }
+  )
 
-  const protectedPaths = ['/dashboard', '/profile', '/calendar', '/dutytype']
-  const isProtected = protectedPaths.some((path) => pathname.startsWith(path))
+  // This will refresh the session cookie if it's expired.
+  await supabase.auth.getUser()
 
-  // เอา comment ส่วนนี้ออกเพื่อเปิดใช้งาน
-  if (isProtected && !accessToken) {
-    const redirectUrl = req.nextUrl.clone()
-    redirectUrl.pathname = '/signin'
-    redirectUrl.searchParams.set('redirectedFrom', pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return NextResponse.next()
+  return res
 }
 
 export const config = {
   matcher: [
-      /*
-      * Match all request paths except for the ones starting with:
-      * - api (API routes)
-      * - _next/static (static files)
-      * - _next/image (image optimization files)
-      * - favicon.ico (favicon file)
-      */
-      '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }
