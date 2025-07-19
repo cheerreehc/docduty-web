@@ -39,7 +39,7 @@ export default async function handler(
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       // By default, redirect to the dashboard after a successful login.
-      return res.redirect('/dashboard') 
+      return res.redirect('/auth/confirmed')
     }
   }
 
