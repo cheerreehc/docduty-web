@@ -10,9 +10,17 @@ import { MemberProvider } from '@/contexts/MemberContext';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import Head from 'next/head';
+
 
 
 export default function App({ Component, pageProps }: AppProps) {
+
+  <Head>
+    <title>DocDuty - หมอเวร</title>
+    <meta name="description" content="เปลี่ยนเรื่องจัดเวรที่วุ่นวายให้เป็นเรื่องง่ายสำหรับคุณหมอ" />
+  </Head>
+
   const router = useRouter();
   const [isPageLoading, setIsPageLoading] = useState(false);
 

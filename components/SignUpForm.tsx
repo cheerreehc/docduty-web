@@ -12,10 +12,12 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const supabase = createClient()
+  const [message, setMessage] = useState('')
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setMessage('') // เคลียร์ข้อความเก่า
 
     if (password !== confirmPassword) {
       setError('รหัสผ่านไม่ตรงกัน')
@@ -28,15 +30,14 @@ export default function SignUpForm() {
       password,
     })
 
+    setLoading(false)
+
     if (error) {
       setError('สมัครไม่สำเร็จ: ' + error.message)
-    } else if (!data.session) {
-      setError('ไม่สามารถสร้าง session ได้ กรุณาลอง login')
-    } else {
-      console.log('✅ Sign up successful! User is now logged in. Session:', data.session)
-      router.replace('/dashboard')
+    } else if (data.user) {
+      // สมัครสำเร็จ! แสดงข้อความบอกให้ไปเช็กอีเมล
+      setMessage('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี')
     }
-    setLoading(false)
   }
 
   return (
@@ -86,24 +87,12 @@ export default function SignUpForm() {
         </div>
       </div>
 
-      <div>
-        <label
-          htmlFor="confirmPassword"
-          className="block text-sm font-medium text-gray-700"
-        >
-          ยืนยันรหัสผ่าน
-        </label>
-        <input
-          id="confirmPassword"
-          type="password"
-          required
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008191] sm:text-sm"
-        />
-      </div>
-
+       {/* บรรทัดสำหรับแสดง Error */}
       {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
+
+      {/* บรรทัดสำหรับแสดงข้อความแจ้งเตือนเมื่อสำเร็จ */}
+      {message && <p className="text-green-600 text-sm font-medium">{message}</p>}
+
 
       <div>
         <button

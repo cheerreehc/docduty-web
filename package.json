@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
+    "@types/node": "^24.0.15",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
@@ -43,6 +43,6 @@
     "prisma": "^6.12.0",
     "supabase": "^2.30.4",
     "tailwindcss": "^4.1.11",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }
