@@ -4,46 +4,32 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const accessToken = req.cookies.get('sb-access-token')?.value
+  // ใช้ชื่อ cookie ที่ถูกต้องของ Supabase v2
+  const accessToken = req.cookies.get('sb-access-token')?.value 
 
-  const protectedPaths = ['/dashboard', '/profile', '/calendar']
+  const protectedPaths = ['/dashboard', '/profile', '/calendar', '/dutytype']
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path))
 
-  // if (isProtected && !accessToken) {
-  //   const redirectUrl = req.nextUrl.clone()
-  //   redirectUrl.pathname = '/signin'
-  //   redirectUrl.searchParams.set('redirectedFrom', pathname)
-  //   return NextResponse.redirect(redirectUrl)
-  // }
+  // เอา comment ส่วนนี้ออกเพื่อเปิดใช้งาน
+  if (isProtected && !accessToken) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/signin'
+    redirectUrl.searchParams.set('redirectedFrom', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard', '/profile', '/calendar'],
+  matcher: [
+      /*
+      * Match all request paths except for the ones starting with:
+      * - api (API routes)
+      * - _next/static (static files)
+      * - _next/image (image optimization files)
+      * - favicon.ico (favicon file)
+      */
+      '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 }
-
-// // middleware.ts
-// import { NextResponse } from 'next/server'
-// import type { NextRequest } from 'next/server'
-
-// export function middleware(req: NextRequest) {
-//   const { nextUrl, cookies } = req
-//   const token = cookies.get('sb-access-token')?.value
-
-//   const protectedPaths = ['/dashboard', '/profile', '/calendar']
-//   const isProtected = protectedPaths.includes(nextUrl.pathname)
-
-//   if (isProtected && !token) {
-//     const redirectUrl = nextUrl.clone()
-//     redirectUrl.pathname = '/signin'
-//     redirectUrl.searchParams.set('redirectedFrom', nextUrl.pathname)
-//     return NextResponse.redirect(redirectUrl)
-//   }
-
-//   return NextResponse.next()
-// }
-
-// export const config = {
-//   matcher: ['/dashboard', '/profile', '/calendar'],
-// }

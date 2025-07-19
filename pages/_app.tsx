@@ -15,12 +15,6 @@ import Head from 'next/head';
 
 
 export default function App({ Component, pageProps }: AppProps) {
-
-  <Head>
-    <title>DocDuty - หมอเวร</title>
-    <meta name="description" content="เปลี่ยนเรื่องจัดเวรที่วุ่นวายให้เป็นเรื่องง่ายสำหรับคุณหมอ" />
-  </Head>
-
   const router = useRouter();
   const [isPageLoading, setIsPageLoading] = useState(false);
 
@@ -40,28 +34,34 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [router]);
 
   return (
-    <UserProvider>
-      <WorkspaceProvider>
-        <MemberProvider>
-        <DutyTypeProvider>
-          <ScheduleProvider> 
-            {isPageLoading && (
-              <div className="fixed inset-0 bg-white/70 z-[9999] flex items-center justify-center">
-                <Image
-                  src="/logo-docduty.png"
-                  alt="Loading"
-                  width={120}
-                  height={120}
-                  className="animate-bounce"
-                />
-              </div>
-            )}
-            <Component {...pageProps} />
-            <Toaster richColors position="top-center" theme="light" />
-          </ScheduleProvider>
-        </DutyTypeProvider>
-        </MemberProvider>
-      </WorkspaceProvider>
-    </UserProvider>
+    <>
+      <Head>
+        <title>DocDuty - หมอเวร</title>
+        <meta name="description" content="เปลี่ยนเรื่องจัดเวรที่วุ่นวายให้เป็นเรื่องง่ายสำหรับคุณหมอ" />
+      </Head>
+      <UserProvider>
+        <WorkspaceProvider>
+          <MemberProvider>
+          <DutyTypeProvider>
+            <ScheduleProvider> 
+              {isPageLoading && (
+                <div className="fixed inset-0 bg-white/70 z-[9999] flex items-center justify-center">
+                  <Image
+                    src="/logo-docduty.png"
+                    alt="Loading"
+                    width={120}
+                    height={120}
+                    className="animate-bounce"
+                  />
+                </div>
+              )}
+              <Component {...pageProps} />
+              <Toaster richColors position="top-center" theme="light" />
+            </ScheduleProvider>
+          </DutyTypeProvider>
+          </MemberProvider>
+        </WorkspaceProvider>
+      </UserProvider>
+    </>
   )
 }
