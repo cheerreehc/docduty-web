@@ -7,7 +7,6 @@ export default function SignUpForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -18,11 +17,6 @@ export default function SignUpForm() {
     e.preventDefault()
     setError('')
     setMessage('') // เคลียร์ข้อความเก่า
-
-    if (password !== confirmPassword) {
-      setError('รหัสผ่านไม่ตรงกัน')
-      return
-    }
     
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({
