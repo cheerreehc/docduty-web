@@ -7,6 +7,7 @@ import { DutyTypeProvider } from '@/contexts/DutyTypeContext'
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext'
 import { ScheduleProvider } from '@/contexts/ScheduleContext'; 
 import { MemberProvider } from '@/contexts/MemberContext';
+import { LocalShiftProvider } from '@/contexts/LocalShiftContext';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
@@ -40,27 +41,27 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="description" content="เปลี่ยนเรื่องจัดเวรที่วุ่นวายให้เป็นเรื่องง่ายสำหรับคุณหมอ" />
       </Head>
       <UserProvider>
-        <WorkspaceProvider>
-          <MemberProvider>
-          <DutyTypeProvider>
-            <ScheduleProvider> 
-              {isPageLoading && (
-                <div className="fixed inset-0 bg-white/70 z-[9999] flex items-center justify-center">
-                  <Image
-                    src="/logo-docduty.png"
-                    alt="Loading"
-                    width={120}
-                    height={120}
-                    className="animate-bounce"
-                  />
-                </div>
-              )}
-              <Component {...pageProps} />
-              <Toaster richColors position="top-center" theme="light" />
-            </ScheduleProvider>
-          </DutyTypeProvider>
-          </MemberProvider>
-        </WorkspaceProvider>
+          <WorkspaceProvider>
+            <MemberProvider>
+            <DutyTypeProvider>
+              <ScheduleProvider> 
+                {isPageLoading && (
+                  <div className="fixed inset-0 bg-white/70 z-[9999] flex items-center justify-center">
+                    <Image
+                      src="/logo-docduty.png"
+                      alt="Loading"
+                      width={120}
+                      height={120}
+                      className="animate-bounce"
+                    />
+                  </div>
+                )}
+                <Component {...pageProps} />
+                <Toaster richColors position="top-center" theme="light" />
+              </ScheduleProvider>
+            </DutyTypeProvider>
+            </MemberProvider>
+          </WorkspaceProvider>
       </UserProvider>
     </>
   )

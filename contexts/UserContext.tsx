@@ -38,52 +38,46 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isSessionLoading, setIsSessionLoading] = useState(true)
 
   const fetchUserProfile = useCallback(async (user: User) => {
-    setLoading(true);
-    // ⭐ ระบุคอลัมน์ที่ต้องการ select อย่างชัดเจน เพื่อให้ TypeScript อนุมาน Type ได้ดีขึ้น
-    const { data: profileData, error: fetchError } = await supabase
+  setLoading(true);
+
+  // 1. ลองดึงข้อมูลโปรไฟล์ก่อน
+  const { data: profileData, error: fetchError } = await supabase
+    .from('profiles')
+    .select('*') // ดึงทุกคอลัมน์ที่ได้รับอนุญาต
+    .eq('id', user.id)
+    .single();
+
+  if (profileData) {
+    // ถ้าเจอโปรไฟล์ ให้ set state แล้วจบการทำงาน
+    setProfile({ ...profileData, email: user.email || '' });
+    setLoading(false);
+    return;
+  }
+
+  // 2. ถ้าไม่เจอโปรไฟล์ (Error PGRST116) ให้ทำการสร้างใหม่
+  if (fetchError && fetchError.code === 'PGRST116') {
+    console.log('Profile not found, creating one...');
+    const { data: newProfile, error: insertError } = await supabase
       .from('profiles')
-      .select('id, email, first_name, last_name, nickname, avatar_url, title, year_level, phone')
-      .eq('id', user.id)
+      .insert({ id: user.id, email: user.email }) // ⭐ เพิ่มแค่ id กับ email ที่จำเป็น
+      .select()
       .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 คือไม่พบข้อมูล (No rows found)
-      console.error('Error fetching profile:', fetchError);
+    if (insertError) {
+      console.error('Error creating profile:', insertError);
       setProfile(null);
-    } else if (profileData) {
-      // ⭐ Cast profileData ให้เป็น Profile type ที่ถูกต้อง
-      // ตรวจสอบว่า profileData มี properties ครบตาม Profile Type หรือไม่
-      setProfile({ ...(profileData as Profile), email: user.email || '' });
     } else {
-      console.log('Profile not found for new user, creating one...');
-      // เมื่อสร้างโปรไฟล์ใหม่ ควรใส่ค่าเริ่มต้นสำหรับคอลัมน์ที่จำเป็น
-      const { data: newProfile, error: insertError } = await supabase
-        .from('profiles')
-        .insert({ 
-          id: user.id, 
-          email: user.email,
-          // ใส่ค่าเริ่มต้นสำหรับคอลัมน์ใหม่ที่เพิ่มเข้ามา
-          title: null, 
-          first_name: null, 
-          last_name: null, 
-          nickname: null, 
-          year_level: null, 
-          phone: null, 
-          avatar_url: null,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-        setProfile(null);
-      } else {
-        // ⭐ Cast newProfile ให้เป็น Profile type ที่ถูกต้อง
-        setProfile(newProfile ? { ...(newProfile as Profile), email: user.email || '' } : null);
-        console.log('✅ New profile created and set.');
-      }
+      setProfile(newProfile ? { ...newProfile, email: user.email || '' } : null);
+      console.log('✅ New profile created and set.');
     }
-    setLoading(false);
-  }, [supabase]);
+  } else if (fetchError) {
+    // ถ้าเป็น Error อื่นๆ ให้แสดงผล
+    console.error('Error fetching profile:', fetchError);
+    setProfile(null);
+  }
+
+  setLoading(false);
+}, [supabase]);
 
   const refreshProfile = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();

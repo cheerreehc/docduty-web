@@ -7,70 +7,79 @@ import { createClient } from '@/utils/supabase/client'
 export default function CreateWorkspacePage() {
   const router = useRouter()
   const { session, profile } = useUser()
+  const supabase = createClient()
 
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleCreate = async () => {
-    setError('')
-
-    if (!session?.user || !profile) {
-      setError('ยังไม่ได้ login')
-      return
-    }
-
-    if (!name.trim()) {
-      setError('กรุณาระบุชื่อ workspace')
-      return
-    }
-
-    setLoading(true)
-
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      setError('ไม่พบข้อมูลผู้ใช้')
-      setLoading(false)
-      return
-    }
+      setError('')
+      if (!session?.user || !profile) {
+        setError('ยังไม่ได้ login')
+        return
+      }
+      if (!name.trim()) {
+        setError('กรุณาระบุชื่อ workspace')
+        return
+      }
+      setLoading(true);
 
     try {
-      // ✅ 1. สร้าง workspace พร้อมระบุ created_by
-      const { data: workspace, error: wsError } = await supabase
-      
+      console.log('--- STARTING TEST: INSERT INTO WORKSPACES ONLY ---');
+        const { data: workspace, error: wsError } = await supabase
         .from('workspaces')
         .insert({
-          name: name.trim(),
-          // created_by: user.id, // 👈 สำคัญมาก สำหรับผ่าน RLS
+          name: name.trim()
         })
         .select()
         .single()
-    
-    
-        console.log('👤 created_by', user.id)
-      if (wsError || !workspace) {
-        throw wsError ?? new Error('ไม่สามารถสร้าง workspace ได้')
+
+      console.log('Workspace Insert Result:', { workspace, wsError });
+
+      if (wsError) {
+        // ถ้าเกิด Error ให้โยน Error ออกไปให้ catch จัดการ
+        throw wsError;
       }
+
+      // ถ้าสำเร็จ ให้ขึ้น Alert และดู Log
+      alert('✅ SUCCESS: Workspace created successfully! Please check the database and console.');
+      console.log('--- ✅ TEST SUCCEEDED ---');
+
+      // ✅ 1. สร้าง workspace พร้อมระบุ created_by
+      // const { data: workspace, error: wsError } = await supabase
+      
+      //   .from('workspaces')
+      //   .insert({
+      //     name: name.trim()
+      //     // created_by: session?.user.id
+      //   })
+      //   .select()
+      //   .single()
+    
+      //   console.log('👤 created_by', session?.user.id)
+      // if (wsError || !workspace) {
+      //   throw wsError ?? new Error('ไม่สามารถสร้าง workspace ได้')
+      // }
 
       // ✅ 2. เพิ่มผู้ใช้เป็น owner
-      const { error: memberError } = await supabase.from('members').insert({
-        workspace_id: workspace.id,
-        user_id: session.user.id,
-        profile_user_id: profile.id,
-        email: profile.email,
-        role: 'owner',
-        status: 'active',
-      })
+      // const { error: memberError } = await supabase.from('members').insert({
+      //   workspace_id: workspace.id,
+      //   user_id: session.user.id,
+      //   profile_user_id: profile.id,
+      //   email: profile.email,
+      //   role: 'owner',
+      //   status: 'active',
+      // })
 
-      if (memberError) {
-        throw new Error('เพิ่มสมาชิกไม่สำเร็จ: ' + memberError.message)
-      }
+      // if (memberError) {
+      //   throw new Error('เพิ่มสมาชิกไม่สำเร็จ: ' + memberError.message)
+      // }
 
-      // ✅ สำเร็จ → redirect
-      router.push('/dashboard')
+      // // ✅ สำเร็จ → redirect
+      // router.push('/dashboard')
     } catch (err: any) {
+      console.error('--- ❌ TEST FAILED ---', err);
       setError(err?.message ?? 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ')
     } finally {
       setLoading(false)
